@@ -3,4 +3,6 @@ matplotlib
 ipywidgets
 pandas
 qgrid
-
+natsort
+plotly
+sklearn
