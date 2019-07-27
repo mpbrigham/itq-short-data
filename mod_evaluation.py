@@ -10,16 +10,15 @@ from sklearn.utils import resample as sk_resample
 
 from natsort import natsorted
 
-# import random
-# import os
+import gzip
+import os
+import json_tricks
 
 import matplotlib.pyplot as plt
 
 import plotly
 import plotly.graph_objs as go
 from plotly import tools
-
-# import mod_compute
 
 
 stats_lookup = { 
@@ -33,7 +32,7 @@ stats_lookup = {
 def bootstrap_ci(data, alpha=10, n_samples=200, **kwargs):
     
     data_m = np.mean(data)
-    boot = sk_resample(data, n_samples=n_samples)
+    boot = sk.utils.resample(data, n_samples=n_samples)
     pct = np.percentile(boot, [alpha/2,100-alpha/2])
 
     return (2*data_m-pct[1], 2*data_m-pct[0])
@@ -56,6 +55,20 @@ def stats_eval(my_stats, fn=np.mean, selected=None):
             my_stats_fn[key] = my_stats[key]
 
     return my_stats_fn
+
+
+def to_cache(name, folder, data):
+
+    with gzip.GzipFile(os.path.join(folder, name+'.json.gz'), 'w') as f:
+        f.write(json_tricks.dumps(data).encode('utf-8'))
+
+def from_cache(name, folder):
+    data = None
+    with gzip.GzipFile(os.path.join(folder, name+'.json.gz'), 'r') as f:
+        data = json_tricks.loads(f.read().decode('utf-8'))
+        
+    return data
+
 
 def top_stats(
     my_stats, my_info,

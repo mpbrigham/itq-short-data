@@ -6,3 +6,4 @@ qgrid
 natsort
 plotly
 sklearn
+json_tricks
