@@ -5,6 +5,7 @@ import qgrid
 from natsort import natsorted
 import plotly
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -117,29 +118,42 @@ def comparison_table(sum_score_stats_multi, df_questions, df_sumscores_multi):
     return tab
 
 
+def rgb_to_rgba(color_idx, alpha=1):
+    color = plotly.colors.DEFAULT_PLOTLY_COLORS[color_idx]
+    return 'rgba'+color[3:-1]+', '+str(alpha)+')'
+
+
 def comparison_plot(
     sum_score_stats_multi,
     df_questions,
     df_sumscores_multi
 ):
 
-    def rgb_to_rgba(color_idx, alpha=1):
-        color = plotly.colors.DEFAULT_PLOTLY_COLORS[color_idx]
-        return 'rgba'+color[3:-1]+', '+str(alpha)+')'
-
-    for y_name, y_u_name, y_l_name, title in [
+    params = [
         ['val_acc_m', 'val_acc_u', 'val_acc_l', 'Accuracy - validation'],
         ['val_mse_m', 'val_mse_u', 'val_mse_l', 'MSE - validation']
-    ]:
-        fig = go.Figure()
+    ]
+    
+    fig = make_subplots(
+        rows=2, 
+        cols=1,
+        subplot_titles=[item[-1] for item in params],
+        vertical_spacing=0.1
+    )
+
+    fig.update_layout(
+        height=1200,
+        width=1200,       
+    )
+
+    for plot_idx, (y_name, y_u_name, y_l_name, _) in enumerate(params):  
         
-        fig.update_layout(
-            title=go.layout.Title(
-                text=title,
-                x=0.5
-            )
-        )
-        for plot_idx, (name, data) in enumerate(zip(
+        if plot_idx==0:
+            showlegend=True
+        else:
+            showlegend=False
+
+        for trace_idx, (name, data) in enumerate(zip(
             ['pi+q_n']+ ['pi + s_'+item for item in natsorted(sum_score_stats_multi)],
             [df_questions]+[df_sumscore for df_sumscore in df_sumscores_multi]
         )):
@@ -150,25 +164,37 @@ def comparison_plot(
             y_l = data[y_l_name].tolist()
             text = data.index.values.tolist()
 
-            fig.add_trace(go.Scatter(
-                x=x+x[::-1],
-                y=y_u+y_l[::-1],
-                fill='toself',
-                fillcolor=rgb_to_rgba(plot_idx, 0.2),
-                line_color='rgba(255,255,255,0)',
-                name=name+' ci'
-            ))
-            fig.add_trace(go.Scatter(
-                x=x, y=y,
-                line_color=rgb_to_rgba(plot_idx, 0.6),
-                mode='lines',
-                text=text,
-                name=name
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=x+x[::-1],
+                    y=y_u+y_l[::-1],
+                    fill='toself',
+                    fillcolor=rgb_to_rgba(trace_idx, 0.2),
+                    line_color='rgba(255,255,255,0)',
+                    name=name+' ci',
+                    showlegend=showlegend,
+                    legendgroup='m'+str(trace_idx)
+                ),
+                row=plot_idx+1,
+                col=1
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x, y=y,
+                    line_color=rgb_to_rgba(trace_idx, 0.6),
+                    mode='lines',
+                    text=text,
+                    name=name,
+                    showlegend=showlegend,
+                    legendgroup='ci'+str(trace_idx)
+                ),
+                row=plot_idx+1,
+                col=1
+            )
 
-        fig.show()
+    fig.show()
 
-        return fig
+    return fig
 
 
 def comparison_plot_old(
