@@ -5,6 +5,7 @@ import qgrid
 from natsort import natsorted
 import plotly
 import plotly.graph_objects as go
+import plotly.express as px
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -13,6 +14,7 @@ import mod_evaluation
 
 
 fig_w, fig_h = (4.5, 3.5)
+
 
 def get_df_questions(
     questions_stats_best, 
@@ -32,11 +34,22 @@ def get_df_questions(
 
 
     df = pd.DataFrame([
-        [model_id, questions_info_best[model_id]['drop_n'], 17-questions_info_best[model_id]['x_d']]
-        + [questions_stats_ci[model_id]['categorical_accuracy'][0], questions_stats_m[model_id]['categorical_accuracy'], questions_stats_ci[model_id]['categorical_accuracy'][1]]
-        + [questions_stats_ci[model_id]['val_categorical_accuracy'][0], questions_stats_m[model_id]['val_categorical_accuracy'], questions_stats_ci[model_id]['val_categorical_accuracy'][1]]
-        + [questions_stats_ci[model_id]['mean_squared_error'][0], questions_stats_m[model_id]['mean_squared_error'], questions_stats_ci[model_id]['mean_squared_error'][1]]
-        + [questions_stats_ci[model_id]['val_mean_squared_error'][0], questions_stats_m[model_id]['val_mean_squared_error'], questions_stats_ci[model_id]['val_mean_squared_error'][1]]    
+        [
+            model_id, questions_info_best[model_id]['drop_n'], 
+            17-questions_info_best[model_id]['x_d'],
+            questions_stats_ci[model_id]['categorical_accuracy'][0], 
+            questions_stats_m[model_id]['categorical_accuracy'], 
+            questions_stats_ci[model_id]['categorical_accuracy'][1],
+            questions_stats_ci[model_id]['val_categorical_accuracy'][0], 
+            questions_stats_m[model_id]['val_categorical_accuracy'], 
+            questions_stats_ci[model_id]['val_categorical_accuracy'][1],
+            questions_stats_ci[model_id]['mean_squared_error'][0], 
+            questions_stats_m[model_id]['mean_squared_error'], 
+            questions_stats_ci[model_id]['mean_squared_error'][1],
+            questions_stats_ci[model_id]['val_mean_squared_error'][0], 
+            questions_stats_m[model_id]['val_mean_squared_error'], 
+            questions_stats_ci[model_id]['val_mean_squared_error'][1]
+        ]
         for model_id in natsorted(questions_stats_m)
     ])
 
@@ -49,6 +62,67 @@ def get_df_questions(
     ]
     df.set_index('model', inplace=True)
     df.sort_values(by=['drop_q'], inplace=True)
+    
+    return df
+
+
+def get_df_questions_conditional_accuracy(
+    questions_stats_best, 
+    questions_info_best,
+):
+
+    questions_stats_m = mod_evaluation.stats_eval(
+        questions_stats_best,
+        selected=['confusion_matrix','val_confusion_matrix']
+    )
+
+    for record_id in questions_stats_m:
+        record = questions_stats_m[record_id]
+        cm = record['confusion_matrix']
+        val_cm = record['val_confusion_matrix']
+        record['confusion_matrix_norm'] = cm/np.sum(cm, axis=1)
+        record['val_confusion_matrix_norm'] = val_cm/np.sum(val_cm, axis=1) 
+            
+    questions_stats_ci = mod_evaluation.stats_eval(
+        questions_stats_best, 
+        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
+        selected=['confusion_matrix','val_confusion_matrix']
+    )
+
+    for record_id in questions_stats_ci:
+        record = questions_stats_ci[record_id]
+        cm_l = record['confusion_matrix'][0]
+        cm_u = record['confusion_matrix'][1]
+        val_cm_l = record['val_confusion_matrix'][0]
+        val_cm_u = record['val_confusion_matrix'][1]
+        record['confusion_matrix_norm'] = [cm_l/np.sum(cm_l, axis=1), cm_u/np.sum(cm_u, axis=1)]
+        record['val_confusion_matrix_norm'] = [val_cm_l/np.sum(val_cm_l, axis=1), val_cm_u/np.sum(val_cm_u, axis=1)]
+
+
+    df = pd.DataFrame([
+            [
+                model_id, 
+                questions_info_best[model_id]['drop_n'], 
+                17-questions_info_best[model_id]['x_d'], 
+                k+1,
+                questions_stats_ci[model_id]['confusion_matrix_norm'][0][k,k],
+                questions_stats_m[model_id]['confusion_matrix_norm'][k,k],
+                questions_stats_ci[model_id]['confusion_matrix_norm'][1][k,k],
+                questions_stats_ci[model_id]['val_confusion_matrix_norm'][0][k,k],
+                questions_stats_m[model_id]['val_confusion_matrix_norm'][k,k],
+                questions_stats_ci[model_id]['val_confusion_matrix_norm'][1][k,k]
+            ]
+            for k in range(5) for model_id in natsorted(questions_stats_m)
+    ])
+
+    df.columns = [
+        'model', 'drop_q', 'drop_sum', 'class',
+        'cond_acc_l', 'cond_acc_m','cond_acc_u',
+        'val_cond_acc_l', 'val_cond_acc_m','val_cond_acc_u'
+    ]
+
+    # df.set_index('model', inplace=True)
+    df.sort_values(by=['drop_q', 'class'], inplace=True)
     
     return df
 
@@ -103,7 +177,7 @@ def get_df_sumscores(sum_score_stats_multi):
     return df_multi
 
 
-def comparison_table(sum_score_stats_multi, df_questions, df_sumscores_multi):
+def table_accuracy_mse(sum_score_stats_multi, df_questions, df_sumscores_multi):
 
     tab_name = ['pi + q_n'] + ['pi + s_'+item for item in natsorted(sum_score_stats_multi)]
     children = [
@@ -118,12 +192,34 @@ def comparison_table(sum_score_stats_multi, df_questions, df_sumscores_multi):
     return tab
 
 
+def table_conditional_accuracy(df):
+
+    tab_name = ['class '+str(k+1) for k in range(5)]
+    children = [
+        qgrid.show_grid(
+            df[[
+                'model', 'drop_q', 'drop_sum', 'class',
+                'cond_acc_l', 'cond_acc_m', 'cond_acc_u',
+                'val_cond_acc_l', 'val_cond_acc_m', 'val_cond_acc_u'
+            ]][df['class']==k+1],
+            precision=4 
+        )
+        for k in range(5)
+    ]
+    tab = widgets.Tab()
+    tab.children = children
+    for i in range(len(children)):
+        tab.set_title(i, tab_name[i])
+
+    return tab
+
+
 def rgb_to_rgba(color_idx, alpha=1):
     color = plotly.colors.DEFAULT_PLOTLY_COLORS[color_idx]
     return 'rgba'+color[3:-1]+', '+str(alpha)+')'
 
 
-def comparison_plot(
+def plot_accuracy_mse(
     sum_score_stats_multi,
     df_questions,
     df_sumscores_multi
@@ -178,6 +274,7 @@ def comparison_plot(
                 row=plot_idx+1,
                 col=1
             )
+
             fig.add_trace(
                 go.Scatter(
                     x=x, y=y,
@@ -191,6 +288,55 @@ def comparison_plot(
                 row=plot_idx+1,
                 col=1
             )
+
+    fig.show()
+
+    return fig
+
+
+def plot_conditional_accuracy(df):
+
+    title = 'Conditional Accuracy - validation'
+
+    fig = px.scatter(
+        df,
+        title={'text':title, 'x':0.5},
+        hover_name='model'
+    )
+
+    fig.update_layout(
+        height=800,
+        width=1200,       
+    )
+
+    for k in range(5):
+        
+        my_df = df[df['class']==k+1]
+        
+        x = my_df['drop_q'].tolist()
+        y = my_df['val_cond_acc_m'].tolist()
+        y_u = my_df['val_cond_acc_u'].tolist()
+        y_l = my_df['val_cond_acc_l'].tolist()
+        text = my_df['model'].tolist()
+        
+        name = 'class '+str(k+1)
+
+        # fig.add_scatter(
+        #         x=x+x[::-1],
+        #         y=y_u+y_l[::-1],
+        #         fill='toself',
+        #         fillcolor=rgb_to_rgba(k, 0.2),
+        #         line_color='rgba(255,255,255,0)',
+        #         name=name+' ci'
+        # )
+
+        fig.add_scatter(
+                x=x, y=y,
+                line_color=rgb_to_rgba(k, 0.6),
+                mode='lines',
+                text=text,
+                name=name
+        )
 
     fig.show()
 
