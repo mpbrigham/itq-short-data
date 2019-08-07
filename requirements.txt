@@ -1,3 +1,4 @@
+jupyter_contrib_nbextensions
 numpy
 matplotlib
 ipywidgets
@@ -7,3 +8,4 @@ natsort
 plotly
 sklearn
 json_tricks
+
