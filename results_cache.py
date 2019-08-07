@@ -57,18 +57,18 @@ sources_train = {
 
 
 sources_rev = {
-    'ca_min': [
-        'questions_drop_pi_stats_val_categorical_accuracy_class_min_max_holdout_train',
-        'questions_drop_pi_info_val_categorical_accuracy_class_min_max_holdout_train'                    
-    ],
+    # 'ca_min': [
+    #     'questions_drop_pi_stats_val_categorical_accuracy_class_min_max_holdout_train',
+    #     'questions_drop_pi_info_val_categorical_accuracy_class_min_max_holdout_train'                    
+    # ],
     'ca_prod': [
         'questions_drop_pi_stats_val_categorical_accuracy_class_prod_max_holdout_train',
         'questions_drop_pi_info_val_categorical_accuracy_class_prod_max_holdout_train'                    
     ],
-    'mse': [
-        'questions_drop_pi_stats_val_mean_squared_error_min_holdout_train',
-        'questions_drop_pi_info_val_mean_squared_error_min_holdout_train'                    
-    ]    
+    # 'mse': [
+    #     'questions_drop_pi_stats_val_mean_squared_error_min_holdout_train',
+    #     'questions_drop_pi_info_val_mean_squared_error_min_holdout_train'                    
+    # ]    
 }
 
 
