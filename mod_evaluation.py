@@ -1,12 +1,7 @@
 import numpy as np
 
-# import pandas as pd
-
 import sklearn as sk
 from sklearn.utils import resample as sk_resample
-
-# from IPython.display import display
-# import ipywidgets as widgets
 
 from natsort import natsorted
 
@@ -29,11 +24,12 @@ stats_lookup = {
     'drop_n': 'Dropped questions'
 }
 
+
 def bootstrap_ci(data, alpha=10, n_samples=200, **kwargs):
     
-    data_m = np.mean(data)
+    data_m = np.mean(data, axis=0)
     boot = sk.utils.resample(data, n_samples=n_samples)
-    pct = np.percentile(boot, [alpha/2,100-alpha/2])
+    pct = np.percentile(boot, [alpha/2,100-alpha/2], axis=0)
 
     return (2*data_m-pct[1], 2*data_m-pct[0])
 

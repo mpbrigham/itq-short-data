@@ -11,164 +11,69 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 import mod_evaluation
-
+import results_cache
 
 fig_w, fig_h = (4.5, 3.5)
 
 
-def get_df_questions(
-    questions_stats_best, 
-    questions_info_best,
-):
-
-    questions_stats_m = mod_evaluation.stats_eval(questions_stats_best)
-
-    questions_stats_ci = mod_evaluation.stats_eval(
-        questions_stats_best, 
-        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
-        selected=[
-            'categorical_accuracy','val_categorical_accuracy',
-            'mean_squared_error','val_mean_squared_error'
-        ]
-    )
+def from_cache_multiple(names, folder):
+    return [mod_evaluation.from_cache(item, folder) for item in names]        
 
 
-    df = pd.DataFrame([
-        [
-            model_id, questions_info_best[model_id]['drop_n'], 
-            17-questions_info_best[model_id]['x_d'],
-            questions_stats_ci[model_id]['categorical_accuracy'][0], 
-            questions_stats_m[model_id]['categorical_accuracy'], 
-            questions_stats_ci[model_id]['categorical_accuracy'][1],
-            questions_stats_ci[model_id]['val_categorical_accuracy'][0], 
-            questions_stats_m[model_id]['val_categorical_accuracy'], 
-            questions_stats_ci[model_id]['val_categorical_accuracy'][1],
-            questions_stats_ci[model_id]['mean_squared_error'][0], 
-            questions_stats_m[model_id]['mean_squared_error'], 
-            questions_stats_ci[model_id]['mean_squared_error'][1],
-            questions_stats_ci[model_id]['val_mean_squared_error'][0], 
-            questions_stats_m[model_id]['val_mean_squared_error'], 
-            questions_stats_ci[model_id]['val_mean_squared_error'][1]
-        ]
-        for model_id in natsorted(questions_stats_m)
-    ])
+def get_df_sumscores(stats_multi):
 
-    df.columns = [
-        'model', 'drop_q', 'drop_sum',
-        'acc_l', 'acc_m','acc_u',
-        'val_acc_l','val_acc_m','val_acc_u',
-        'mse_l', 'mse_m', 'mse_u',
-        'val_mse_l', 'val_mse_m', 'val_mse_u'
-    ]
-    df.set_index('model', inplace=True)
-    df.sort_values(by=['drop_q'], inplace=True)
-    
-    return df
-
-
-def get_df_questions_conditional_accuracy(
-    questions_stats_best, 
-    questions_info_best,
-):
-
-    questions_stats_m = mod_evaluation.stats_eval(
-        questions_stats_best,
-        selected=['confusion_matrix','val_confusion_matrix']
-    )
-
-    for record_id in questions_stats_m:
-        record = questions_stats_m[record_id]
-        cm = record['confusion_matrix']
-        val_cm = record['val_confusion_matrix']
-        record['confusion_matrix_norm'] = cm/np.sum(cm, axis=1)
-        record['val_confusion_matrix_norm'] = val_cm/np.sum(val_cm, axis=1) 
-            
-    questions_stats_ci = mod_evaluation.stats_eval(
-        questions_stats_best, 
-        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
-        selected=['confusion_matrix','val_confusion_matrix']
-    )
-
-    for record_id in questions_stats_ci:
-        record = questions_stats_ci[record_id]
-        cm_l = record['confusion_matrix'][0]
-        cm_u = record['confusion_matrix'][1]
-        val_cm_l = record['val_confusion_matrix'][0]
-        val_cm_u = record['val_confusion_matrix'][1]
-        record['confusion_matrix_norm'] = [cm_l/np.sum(cm_l, axis=1), cm_u/np.sum(cm_u, axis=1)]
-        record['val_confusion_matrix_norm'] = [val_cm_l/np.sum(val_cm_l, axis=1), val_cm_u/np.sum(val_cm_u, axis=1)]
-
-
-    df = pd.DataFrame([
-            [
-                model_id, 
-                questions_info_best[model_id]['drop_n'], 
-                17-questions_info_best[model_id]['x_d'], 
-                k+1,
-                questions_stats_ci[model_id]['confusion_matrix_norm'][0][k,k],
-                questions_stats_m[model_id]['confusion_matrix_norm'][k,k],
-                questions_stats_ci[model_id]['confusion_matrix_norm'][1][k,k],
-                questions_stats_ci[model_id]['val_confusion_matrix_norm'][0][k,k],
-                questions_stats_m[model_id]['val_confusion_matrix_norm'][k,k],
-                questions_stats_ci[model_id]['val_confusion_matrix_norm'][1][k,k]
-            ]
-            for k in range(5) for model_id in natsorted(questions_stats_m)
-    ])
-
-    df.columns = [
-        'model', 'drop_q', 'drop_sum', 'class',
-        'cond_acc_l', 'cond_acc_m','cond_acc_u',
-        'val_cond_acc_l', 'val_cond_acc_m','val_cond_acc_u'
-    ]
-
-    # df.set_index('model', inplace=True)
-    df.sort_values(by=['drop_q', 'class'], inplace=True)
-    
-    return df
-
-
-def get_df_sumscores(sum_score_stats_multi):
-
-    sum_score_stats_multi_m = {
+    stats_multi_m = {
         key: mod_evaluation.stats_eval(
-            sum_score_stats_multi[key][0]
+            stats_multi[key][0]
         )
-        for key in sum_score_stats_multi
+        for key in stats_multi
     }
-    sum_score_stats_multi_ci = {
+    stats_multi_ci = {
         key: mod_evaluation.stats_eval(
-            sum_score_stats_multi[key][0], 
+            stats_multi[key][0], 
             fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
             selected=[
                 'categorical_accuracy','val_categorical_accuracy',
                 'mean_squared_error','val_mean_squared_error'
             ]
         )
-        for key in sum_score_stats_multi
+        for key in stats_multi
     }
 
     df_multi = []
     
-    for key in sum_score_stats_multi_m:
-        sum_score_info = sum_score_stats_multi[key][1]
-        sum_score_stats_m = sum_score_stats_multi_m[key]
-        sum_score_stats_ci = sum_score_stats_multi_ci[key]
+    for key in stats_multi_m:
+        info = stats_multi[key][1]
+        stats_m = stats_multi_m[key]
+        stats_ci = stats_multi_ci[key]
 
         df = pd.DataFrame([
-            [model_id, sum_score_info[model_id]['drop_n'], int(key)+1]
-            + [sum_score_stats_ci[model_id]['categorical_accuracy'][0], sum_score_stats_m[model_id]['categorical_accuracy'], sum_score_stats_ci[model_id]['categorical_accuracy'][1]]
-            + [sum_score_stats_ci[model_id]['val_categorical_accuracy'][0], sum_score_stats_m[model_id]['val_categorical_accuracy'], sum_score_stats_ci[model_id]['val_categorical_accuracy'][1]]
-            + [sum_score_stats_ci[model_id]['mean_squared_error'][0], sum_score_stats_m[model_id]['mean_squared_error'], sum_score_stats_ci[model_id]['mean_squared_error'][1]]
-            + [sum_score_stats_ci[model_id]['val_mean_squared_error'][0], sum_score_stats_m[model_id]['val_mean_squared_error'], sum_score_stats_ci[model_id]['val_mean_squared_error'][1]]    
-            for model_id in natsorted(sum_score_stats_m)
+            [
+                model_id, 
+                info[model_id]['drop_n'],
+                int(key)+1,
+                stats_ci[model_id]['val_categorical_accuracy'][0], 
+                stats_m[model_id]['val_categorical_accuracy'], 
+                stats_ci[model_id]['val_categorical_accuracy'][1],
+                stats_ci[model_id]['val_mean_squared_error'][0], 
+                stats_m[model_id]['val_mean_squared_error'], 
+                stats_ci[model_id]['val_mean_squared_error'][1],
+                stats_ci[model_id]['categorical_accuracy'][0], 
+                stats_m[model_id]['categorical_accuracy'], 
+                stats_ci[model_id]['categorical_accuracy'][1],
+                stats_ci[model_id]['mean_squared_error'][0], 
+                stats_m[model_id]['mean_squared_error'], 
+                stats_ci[model_id]['mean_squared_error'][1]
+            ]
+            for model_id in natsorted(stats_m)
         ])
 
         df.columns = [
             'model', 'drop_q', 'drop_sum',
-            'acc_l', 'acc_m','acc_u',
             'val_acc_l','val_acc_m','val_acc_u',
-            'mse_l', 'mse_m', 'mse_u',
-            'val_mse_l', 'val_mse_m', 'val_mse_u'
+            'val_mse_l', 'val_mse_m', 'val_mse_u',
+            'acc_l', 'acc_m','acc_u',
+            'mse_l', 'mse_m', 'mse_u'            
         ]
         df.set_index('model', inplace=True)
         df.sort_values(by=['drop_q'], inplace=True)
@@ -177,17 +82,121 @@ def get_df_sumscores(sum_score_stats_multi):
     return df_multi
 
 
-def table_accuracy_mse(sum_score_stats_multi, df_questions, df_sumscores_multi):
+def get_df_questions(
+    stats_best, 
+    info_best,
+):
 
-    tab_name = ['pi + q_n'] + ['pi + s_'+item for item in natsorted(sum_score_stats_multi)]
+    stats_m = mod_evaluation.stats_eval(stats_best)
+
+    stats_ci = mod_evaluation.stats_eval(
+        stats_best, 
+        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
+        selected=[
+            'categorical_accuracy', 'val_categorical_accuracy',
+            'mean_squared_error', 'val_mean_squared_error'
+        ]
+    )
+
+    df = pd.DataFrame([
+        [
+            model_id, 
+            info_best[model_id]['drop_n'], 
+            17-info_best[model_id]['x_d'],
+            # info_best[model_id]['x_n'],
+            stats_ci[model_id]['val_categorical_accuracy'][0], 
+            stats_m[model_id]['val_categorical_accuracy'], 
+            stats_ci[model_id]['val_categorical_accuracy'][1],
+            stats_ci[model_id]['val_mean_squared_error'][0], 
+            stats_m[model_id]['val_mean_squared_error'], 
+            stats_ci[model_id]['val_mean_squared_error'][1],
+            stats_ci[model_id]['categorical_accuracy'][0], 
+            stats_m[model_id]['categorical_accuracy'], 
+            stats_ci[model_id]['categorical_accuracy'][1],
+            stats_ci[model_id]['mean_squared_error'][0], 
+            stats_m[model_id]['mean_squared_error'], 
+            stats_ci[model_id]['mean_squared_error'][1]
+        ]
+        for model_id in natsorted(stats_m)
+    ])
+
+    df.columns = [
+        'model', 'drop_q', 'drop_sum', 
+        # 'samples',
+        'val_acc_l','val_acc_m','val_acc_u',
+        'val_mse_l', 'val_mse_m', 'val_mse_u',
+        'acc_l', 'acc_m','acc_u',  
+        'mse_l', 'mse_m', 'mse_u',
+    ]
+    df.set_index('model', inplace=True)
+    df.sort_values(by=['drop_q'], inplace=True)
+    
+    return df
+    
+    
+def get_df_questions_conditional_accuracy(
+    stats_best, 
+    info_best,
+):
+
+    stats_m = mod_evaluation.stats_eval(stats_best)
+
+    stats_ci = mod_evaluation.stats_eval(
+        stats_best, 
+        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
+        selected=[
+            'categorical_accuracy_class', 'val_categorical_accuracy_class'
+        ]
+    )
+    
+    df = pd.DataFrame([
+            [
+                model_id, 
+                info_best[model_id]['drop_n'], 
+                17-info_best[model_id]['x_d'], 
+                k+1,
+                stats_ci[model_id]['val_categorical_accuracy_class'][0][k],
+                stats_m[model_id]['val_categorical_accuracy_class'][k],
+                stats_ci[model_id]['val_categorical_accuracy_class'][1][k],
+                stats_ci[model_id]['categorical_accuracy_class'][0][k],
+                stats_m[model_id]['categorical_accuracy_class'][k],
+                stats_ci[model_id]['categorical_accuracy_class'][1][k]
+            ]
+            for k in range(5) for model_id in natsorted(stats_m)
+    ])
+ 
+    df.columns = [
+        'model', 'drop_q', 'drop_sum', 'class',
+        'val_cond_acc_l', 'val_cond_acc_m','val_cond_acc_u',
+        'cond_acc_l', 'cond_acc_m','cond_acc_u'
+    ]
+ 
+    # df.set_index('model', inplace=True)
+    df.sort_values(by=['drop_q', 'class'], inplace=True)
+     
+    return df
+
+
+def table_accuracy_questions_sum_score(
+    sum_score_stats_multi, 
+    df_questions, 
+    df_sumscores_multi
+):
+
+    tab_name = ['pi + q_n'] + [
+        'pi + s_'+item 
+        for item in natsorted(sum_score_stats_multi)
+        ]
     children = [
         qgrid.show_grid(df,precision=4) 
-        for df in [df_questions]+[df_sumscore for df_sumscore in df_sumscores_multi]
+        for df in [df_questions]+[df_sumscore 
+        for df_sumscore in df_sumscores_multi]
     ]
     tab = widgets.Tab()
     tab.children = children
     for i in range(len(children)):
         tab.set_title(i, tab_name[i])
+    tab.style = {'description_width': 'initial'}
 
     return tab
 
@@ -206,17 +215,161 @@ def table_conditional_accuracy(df):
         )
         for k in range(5)
     ]
+
     tab = widgets.Tab()
     tab.children = children
     for i in range(len(children)):
         tab.set_title(i, tab_name[i])
+    tab.style = {'description_width': 'initial'}
+
+    return tab
+
+
+def table_accuracy_holdout(stats_holdout, questions_info):
+
+    tab_name, children = ([], [])
+
+    for model_type in natsorted(stats_holdout):
+        
+        tab_name += [model_type]
+        
+        df = pd.DataFrame([
+            [
+                model_id, 
+                questions_info[model_type][model_id]['drop_n'],
+                stats_holdout[model_type][model_id]['val_categorical_accuracy'],      
+                stats_holdout[model_type][model_id]['val_mean_squared_error'], 
+                stats_holdout[model_type][model_id]['categorical_accuracy'],
+                stats_holdout[model_type][model_id]['mean_squared_error'], 
+            ]
+            for model_id in natsorted(stats_holdout[model_type])
+        ])
+        
+        df.columns = [
+            'model', 'drop_q', 
+            'val_acc_m', 'val_mse_m',
+            'acc_m', 'mse_m'
+        ]
+            
+        df.set_index('model', inplace=True)
+        
+        children += [qgrid.show_grid(df, precision=4)]
+
+    tab = widgets.Tab()
+    tab.children = children
+    for i in range(len(tab_name)):
+        tab.set_title(i, tab_name[i])
+    tab.style = {'description_width': 'initial'}
+        
+    return tab
+
+
+def tab_plot_conditional_accuracy(
+    df_questions,
+    df_questions_ca,
+    questions_info,
+    model_type_name=None,
+    title=None
+):
+
+    tab_name, children = ([], [])
+
+    for model_type in natsorted(questions_info):
+
+        if model_type_name is None:
+            name = model_type 
+        else:
+            name = model_type_name[model_type]
+
+        if title is None:
+            title='Conditional accuracy - validation - ' + name
+
+        tab_name += [model_type]
+
+        fig = plot_conditional_accuracy(
+            df_questions[model_type],
+            df_questions_ca[model_type],
+            title=title 
+        )
+               
+        fig.update_yaxes(range=[0.8, 1])
+        
+        children += [go.FigureWidget(fig)]
+
+    tab = widgets.Tab()
+    tab.children = children
+
+    for i in range(len(tab_name)):
+        tab.set_title(i, tab_name[i])
+    tab.style = {'description_width': 'initial'}
+
+    return tab
+
+
+def tab_plot_descent_methods_validation(
+    df_questions, 
+    questions_info,
+    model_type_name=None,
+    stats_holdout=None
+):
+
+    tab_name, children = ([], [])
+
+    for model_type in natsorted(questions_info):
+
+        if model_type_name is None:
+            name = model_type 
+        else:
+            name = model_type_name[model_type]
+        
+        tab_name += [model_type]
+
+        fig = plot_simple(
+            [[df_questions[model_type], 'cv mean']],
+            title='Holdout set accuracy - '+name,
+            ci=True
+        )
+        
+        if stats_holdout is not None:
+
+            models = natsorted(stats_holdout[model_type])
+            
+            x = [
+                questions_info[model_type][model_id]['drop_n'] 
+                for model_id in models
+            ]
+            
+            y = [
+                stats_holdout[model_type][model_id]['val_categorical_accuracy']  
+                for model_id in models
+            ]
+            
+            fig.add_scatter(
+                x=x,
+                y=y,
+                line_color='rgba(0,0,0,0.6)',
+                mode='lines',
+                text=models,
+                name='holdout'
+            )
+        
+        fig.update_yaxes(range=[0.8, 1])
+        
+        children += [go.FigureWidget(fig)]
+
+    tab = widgets.Tab()
+    tab.children = children
+
+    for i in range(len(tab_name)):
+        tab.set_title(i, tab_name[i])
+    tab.style = {'description_width': 'initial'}
 
     return tab
 
 
 def rgb_to_rgba(color_idx, alpha=1):
     color = plotly.colors.DEFAULT_PLOTLY_COLORS[color_idx]
-    return 'rgba'+color[3:-1]+', '+str(alpha)+')'
+    return 'rgba('+color[4:-1]+', '+str(alpha)+')'
 
 
 def plot_accuracy_mse(
@@ -238,8 +391,8 @@ def plot_accuracy_mse(
     )
 
     fig.update_layout(
-        height=1200,
-        width=1200,       
+        height=600,
+        width=800    
     )
 
     for plot_idx, (y_name, y_u_name, y_l_name, _) in enumerate(params):  
@@ -289,56 +442,88 @@ def plot_accuracy_mse(
                 col=1
             )
 
-    fig.show()
+    return fig
+
+
+def plot_simple(
+    df_list,
+    title=None,
+    ci=False, 
+    y_m='val_acc_m',
+    y_l='val_acc_l', 
+    y_u='val_acc_u',
+    black_trace=None
+    ):
+
+    for df_idx, (my_df, name) in enumerate(df_list):
+
+        if df_idx==0:
+            fig = px.scatter(
+                my_df,
+                title={'text':title, 'x':0.5},
+                height=600,
+                width=800
+            )
+
+        if black_trace is not None and black_trace==df_idx:
+            fillcolor='rgba(0,0,0,0.2)'
+            line_color='rgba(0,0,0,0.6)'
+        else:
+            fillcolor=rgb_to_rgba(df_idx, 0.2)
+            line_color=rgb_to_rgba(df_idx, 0.6)
+
+        x = my_df['drop_q'].tolist()
+        y = my_df[y_m].tolist()
+
+        if ci:
+
+            data_l = my_df[y_l].tolist() 
+            data_u = my_df[y_u].tolist()
+
+            fig.add_scatter(
+                x=x+x[::-1],
+                y=data_u+data_l[::-1],
+                fill='toself',
+                fillcolor=fillcolor,
+                line_color='rgba(255,255,255,0)',
+                name=name+' ci'
+            )
+
+        fig.add_scatter(
+            x=x, y=y,
+            line_color=line_color,
+            mode='lines',
+            text=my_df.index.tolist(),
+            name=name
+        )
 
     return fig
 
 
-def plot_conditional_accuracy(df):
+def plot_conditional_accuracy(
+    df, 
+    df_ca,
+    title='Conditional accuracy - validation'
+):
 
-    title = 'Conditional Accuracy - validation'
-
-    fig = px.scatter(
-        df,
-        title={'text':title, 'x':0.5},
-        hover_name='model'
+    fig = plot_simple(
+        [
+            [df_ca[df_ca['class']==k+1], 'class '+str(k+1)]
+            for k in range(5)
+        ],
+        title=title,
+        ci=False,
+        y_m='val_cond_acc_m'
     )
 
-    fig.update_layout(
-        height=800,
-        width=1200,       
+    fig.add_scatter(
+        x=df['drop_q'],
+        y=df['val_acc_m'],
+        line_color='rgba(0,0,0,0.6)',
+        mode='lines',
+        text=df.index.tolist(),
+        name='mean'
     )
-
-    for k in range(5):
-        
-        my_df = df[df['class']==k+1]
-        
-        x = my_df['drop_q'].tolist()
-        y = my_df['val_cond_acc_m'].tolist()
-        y_u = my_df['val_cond_acc_u'].tolist()
-        y_l = my_df['val_cond_acc_l'].tolist()
-        text = my_df['model'].tolist()
-        
-        name = 'class '+str(k+1)
-
-        # fig.add_scatter(
-        #         x=x+x[::-1],
-        #         y=y_u+y_l[::-1],
-        #         fill='toself',
-        #         fillcolor=rgb_to_rgba(k, 0.2),
-        #         line_color='rgba(255,255,255,0)',
-        #         name=name+' ci'
-        # )
-
-        fig.add_scatter(
-                x=x, y=y,
-                line_color=rgb_to_rgba(k, 0.6),
-                mode='lines',
-                text=text,
-                name=name
-        )
-
-    fig.show()
 
     return fig
 
