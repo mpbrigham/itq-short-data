@@ -85,49 +85,70 @@ def get_df_sumscores(stats_multi):
 def get_df_questions(
     stats_best, 
     info_best,
+    ci=True
 ):
 
     stats_m = mod_evaluation.stats_eval(stats_best)
 
-    stats_ci = mod_evaluation.stats_eval(
-        stats_best, 
-        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
-        selected=[
-            'categorical_accuracy', 'val_categorical_accuracy',
-            'mean_squared_error', 'val_mean_squared_error'
-        ]
-    )
+    if ci:
+        stats_ci = mod_evaluation.stats_eval(
+            stats_best, 
+            fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
+            selected=[
+                'categorical_accuracy', 'val_categorical_accuracy',
+                'mean_squared_error', 'val_mean_squared_error'
+            ]
+        )
 
-    df = pd.DataFrame([
-        [
-            model_id, 
-            info_best[model_id]['drop_n'], 
-            17-info_best[model_id]['x_d'],
-            # info_best[model_id]['x_n'],
-            stats_ci[model_id]['val_categorical_accuracy'][0], 
-            stats_m[model_id]['val_categorical_accuracy'], 
-            stats_ci[model_id]['val_categorical_accuracy'][1],
-            stats_ci[model_id]['val_mean_squared_error'][0], 
-            stats_m[model_id]['val_mean_squared_error'], 
-            stats_ci[model_id]['val_mean_squared_error'][1],
-            stats_ci[model_id]['categorical_accuracy'][0], 
-            stats_m[model_id]['categorical_accuracy'], 
-            stats_ci[model_id]['categorical_accuracy'][1],
-            stats_ci[model_id]['mean_squared_error'][0], 
-            stats_m[model_id]['mean_squared_error'], 
-            stats_ci[model_id]['mean_squared_error'][1]
-        ]
-        for model_id in natsorted(stats_m)
-    ])
+        df = pd.DataFrame([
+            [
+                model_id, 
+                info_best[model_id]['drop_n'], 
+                17-info_best[model_id]['x_d'],
+                stats_ci[model_id]['val_categorical_accuracy'][0], 
+                stats_m[model_id]['val_categorical_accuracy'], 
+                stats_ci[model_id]['val_categorical_accuracy'][1],
+                stats_ci[model_id]['val_mean_squared_error'][0], 
+                stats_m[model_id]['val_mean_squared_error'], 
+                stats_ci[model_id]['val_mean_squared_error'][1],
+                stats_ci[model_id]['categorical_accuracy'][0], 
+                stats_m[model_id]['categorical_accuracy'], 
+                stats_ci[model_id]['categorical_accuracy'][1],
+                stats_ci[model_id]['mean_squared_error'][0], 
+                stats_m[model_id]['mean_squared_error'], 
+                stats_ci[model_id]['mean_squared_error'][1]
+            ]
+            for model_id in natsorted(stats_m)
+        ])
 
-    df.columns = [
-        'model', 'drop_q', 'drop_sum', 
-        # 'samples',
-        'val_acc_l','val_acc_m','val_acc_u',
-        'val_mse_l', 'val_mse_m', 'val_mse_u',
-        'acc_l', 'acc_m','acc_u',  
-        'mse_l', 'mse_m', 'mse_u',
-    ]
+        df.columns = [
+            'model', 'drop_q', 'drop_sum',
+            'val_acc_l','val_acc_m','val_acc_u',
+            'val_mse_l', 'val_mse_m', 'val_mse_u',
+            'acc_l', 'acc_m','acc_u',  
+            'mse_l', 'mse_m', 'mse_u',
+        ]
+    else:
+
+        df = pd.DataFrame([
+            [
+                model_id, 
+                info_best[model_id]['drop_n'], 
+                17-info_best[model_id]['x_d'],
+                stats_m[model_id]['val_categorical_accuracy'], 
+                stats_m[model_id]['val_mean_squared_error'], 
+                stats_m[model_id]['categorical_accuracy'], 
+                stats_m[model_id]['mean_squared_error']
+            ]
+            for model_id in natsorted(stats_m)
+        ])
+
+        df.columns = [
+            'model', 'drop_q', 'drop_sum',
+            'val_acc_m', 'val_mse_m',
+            'acc_m', 'mse_m'
+        ]
+
     df.set_index('model', inplace=True)
     df.sort_values(by=['drop_q'], inplace=True)
     
@@ -137,41 +158,60 @@ def get_df_questions(
 def get_df_questions_conditional_accuracy(
     stats_best, 
     info_best,
+    ci=True
 ):
 
     stats_m = mod_evaluation.stats_eval(stats_best)
 
-    stats_ci = mod_evaluation.stats_eval(
-        stats_best, 
-        fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
-        selected=[
-            'categorical_accuracy_class', 'val_categorical_accuracy_class'
-        ]
-    )
-    
-    df = pd.DataFrame([
-            [
-                model_id, 
-                info_best[model_id]['drop_n'], 
-                17-info_best[model_id]['x_d'], 
-                k+1,
-                stats_ci[model_id]['val_categorical_accuracy_class'][0][k],
-                stats_m[model_id]['val_categorical_accuracy_class'][k],
-                stats_ci[model_id]['val_categorical_accuracy_class'][1][k],
-                stats_ci[model_id]['categorical_accuracy_class'][0][k],
-                stats_m[model_id]['categorical_accuracy_class'][k],
-                stats_ci[model_id]['categorical_accuracy_class'][1][k]
+    if ci:
+        stats_ci = mod_evaluation.stats_eval(
+            stats_best, 
+            fn=lambda a,**kwargs: mod_evaluation.bootstrap_ci(a, alpha=10, **kwargs),
+            selected=[
+                'categorical_accuracy_class', 'val_categorical_accuracy_class'
             ]
-            for k in range(5) for model_id in natsorted(stats_m)
-    ])
- 
-    df.columns = [
-        'model', 'drop_q', 'drop_sum', 'class',
-        'val_cond_acc_l', 'val_cond_acc_m','val_cond_acc_u',
-        'cond_acc_l', 'cond_acc_m','cond_acc_u'
-    ]
- 
-    # df.set_index('model', inplace=True)
+        )
+    
+        df = pd.DataFrame([
+                [
+                    model_id, 
+                    info_best[model_id]['drop_n'], 
+                    17-info_best[model_id]['x_d'], 
+                    k+1,
+                    stats_ci[model_id]['val_categorical_accuracy_class'][0][k],
+                    stats_m[model_id]['val_categorical_accuracy_class'][k],
+                    stats_ci[model_id]['val_categorical_accuracy_class'][1][k],
+                    stats_ci[model_id]['categorical_accuracy_class'][0][k],
+                    stats_m[model_id]['categorical_accuracy_class'][k],
+                    stats_ci[model_id]['categorical_accuracy_class'][1][k]
+                ]
+                for k in range(5) for model_id in natsorted(stats_m)
+        ])
+        
+        df.columns = [
+            'model', 'drop_q', 'drop_sum', 'class',
+            'val_cond_acc_l', 'val_cond_acc_m','val_cond_acc_u',
+            'cond_acc_l', 'cond_acc_m','cond_acc_u'
+        ]
+
+    else:
+        df = pd.DataFrame([
+                [
+                    model_id, 
+                    info_best[model_id]['drop_n'], 
+                    17-info_best[model_id]['x_d'], 
+                    k+1,
+                    stats_m[model_id]['val_categorical_accuracy_class'][k],
+                    stats_m[model_id]['categorical_accuracy_class'][k]
+                ]
+                for k in range(5) for model_id in natsorted(stats_m)
+        ])
+
+        df.columns = [
+            'model', 'drop_q', 'drop_sum', 'class',
+            'val_cond_acc_m', 'cond_acc_m'
+        ]
+
     df.sort_values(by=['drop_q', 'class'], inplace=True)
      
     return df
@@ -452,7 +492,8 @@ def plot_simple(
     y_m='val_acc_m',
     y_l='val_acc_l', 
     y_u='val_acc_u',
-    black_trace=None
+    black_trace=None,
+    yaxes_range=None
     ):
 
     for df_idx, (my_df, name) in enumerate(df_list):
@@ -496,6 +537,9 @@ def plot_simple(
             text=my_df.index.tolist(),
             name=name
         )
+
+    if yaxes_range is not None:
+        fig.update_yaxes(range=yaxes_range)
 
     return fig
 

@@ -97,7 +97,7 @@ def get_questions(results_folder, sources=sources_val):
     return questions_stats, questions_info
 
 
-def get_df_questions(questions_stats, questions_info):
+def get_df_questions(questions_stats, questions_info, ci=True):
 
     df_questions, df_questions_ca = ({}, {})
 
@@ -105,12 +105,14 @@ def get_df_questions(questions_stats, questions_info):
 
         df_questions[name] = mod_viewer.get_df_questions(
             questions_stats[name],
-            questions_info[name]
+            questions_info[name],
+            ci=ci
         )
 
         df_questions_ca[name] = mod_viewer.get_df_questions_conditional_accuracy(
             questions_stats[name],
-            questions_info[name]
+            questions_info[name],
+            ci=ci
         )
 
     return df_questions, df_questions_ca
