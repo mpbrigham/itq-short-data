@@ -72,6 +72,14 @@ sources_rev = {
 }
 
 
+sources_cross = {
+    'ca_prod': [
+        'questions_drop_pi_stats_val_categorical_accuracy_class_prod_max_holdout_cross',
+        'questions_drop_pi_info_val_categorical_accuracy_class_prod_max_holdout_cross'                    
+    ],
+}
+
+
 model_type_name = {
     'ca_min': 'conditional accuracy min',
     'ca_prod': 'conditional accuracy product',
