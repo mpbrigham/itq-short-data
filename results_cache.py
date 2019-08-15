@@ -73,10 +73,18 @@ sources_rev = {
 
 
 sources_cross = {
+    'ca_min': [
+        'questions_drop_pi_stats_val_categorical_accuracy_class_min_max_holdout_cross',
+        'questions_drop_pi_info_val_categorical_accuracy_class_min_max_holdout_cross'                    
+    ],
     'ca_prod': [
         'questions_drop_pi_stats_val_categorical_accuracy_class_prod_max_holdout_cross',
         'questions_drop_pi_info_val_categorical_accuracy_class_prod_max_holdout_cross'                    
     ],
+    'mse': [
+        'questions_drop_pi_stats_val_mean_squared_error_min_holdout_cross',
+        'questions_drop_pi_info_val_mean_squared_error_min_holdout_cross'                    
+    ]     
 }
 
 
