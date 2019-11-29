@@ -166,7 +166,9 @@ def get_stats_flat(my_data):
 
 def tab_plot_accuracy_multi(
     df_multi,
-    df_multi_val
+    df_multi_val,
+    yaxes_range_acc=[0.8, 1],
+    yaxes_range_mse=[0, 30]
 ):
 
     run_ids = natsorted(df_multi.keys())
@@ -183,56 +185,58 @@ def tab_plot_accuracy_multi(
             title={'text': 'Mean holdout set accuracy - ' + metric_short, 'x':0.5},
             height=fig_height, width=fig_width
         )
-        
+
         fig2 = px.scatter(
             None,
             title={'text': 'Mean holdout set MSE - ' + metric_short, 'x':0.5},
             height=fig_height, width=fig_width
         )
-        
+
         for run_idx, run_id in enumerate(df_multi):
 
-                if run_idx==0:
-                    showlegend = True
-                else:
-                    showlegend = False
+            if run_idx==0:
+                showlegend = True
+            else:
+                showlegend = False
 
-                if ((metric_id not in df_multi[run_id])
-                    or (metric_id not in df_multi_val[run_id])):
-                    continue
+            if ((metric_id not in df_multi[run_id])
+                or (metric_id not in df_multi_val[run_id])):
+                continue
 
-                df_data = df_multi[run_id][metric_id]
-                df_data_val = df_multi_val[run_id][metric_id]
-                    
-                fig1.add_scatter(
-                    y=df_data['val_acc_m'],
-                    line_color=mod_viewer.rgb_to_rgba(0, 0.2),
-                    showlegend=showlegend,
-                    name='cv'
-                )
+            df_data = df_multi[run_id][metric_id]
+            df_data_val = df_multi_val[run_id][metric_id]
                 
-                fig1.add_scatter(
-                    y=df_data_val['val_acc_m'],
-                    line_color='rgba(0,0,0,0.2)',
-                    showlegend=showlegend,
-                    name='hold'
-                )
-                
-                fig2.add_scatter(
-                    y=df_data['val_mse_m'],
-                    line_color=mod_viewer.rgb_to_rgba(0, 0.2),
-                    showlegend=showlegend,
-                    name='cv'
-                )
-                
-                fig2.add_scatter(
-                    y=df_data_val['val_mse_m'],
-                    line_color='rgba(0,0,0,0.2)',
-                    showlegend=showlegend,
-                    name='hold'
-                )
+            fig1.add_scatter(
+                y=df_data['val_acc_m'],
+                line_color=mod_viewer.rgb_to_rgba(0, 0.2),
+                showlegend=showlegend,
+                name='cv'
+            )
+            
+            fig1.add_scatter(
+                y=df_data_val['val_acc_m'],
+                line_color='rgba(0,0,0,0.2)',
+                showlegend=showlegend,
+                name='hold'
+            )
+            
+            fig2.add_scatter(
+                y=df_data['val_mse_m'],
+                line_color=mod_viewer.rgb_to_rgba(0, 0.2),
+                showlegend=showlegend,
+                name='cv'
+            )
+            
+            fig2.add_scatter(
+                y=df_data_val['val_mse_m'],
+                line_color='rgba(0,0,0,0.2)',
+                showlegend=showlegend,
+                name='hold'
+            )
 
-                
+        fig1.update_yaxes(range=yaxes_range_acc)
+        fig2.update_yaxes(range=yaxes_range_mse)
+
         tab_children += [
             widgets.HBox([go.FigureWidget(fig1), go.FigureWidget(fig2)])
         ]
