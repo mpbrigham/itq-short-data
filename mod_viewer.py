@@ -13,8 +13,8 @@ sort_params_short = {
     for item in mod_evaluation.sort_params
 }
 
-fig_height = 450
-fig_width = 728
+fig_height = 400
+fig_width = 650
 
 
 def tab_plot_conditional_accuracy(
