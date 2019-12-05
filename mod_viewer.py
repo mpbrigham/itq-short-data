@@ -13,18 +13,22 @@ sort_params_short = {
     for item in mod_evaluation.sort_params
 }
 
-fig_height = 400
-fig_width = 650
+fig_height = 450
+fig_width = 450
+
+yaxes_range_acc=[0.8, 1]
+yaxes_range_mse=[0, 10]
+yaxes_range_xent=[0, 0.2]
 
 
-def tab_plot_conditional_accuracy(
+def tab_plot_metric_class(
     df_questions,
     df_questions_ca,
     questions_info,
     model_type_name=sort_params_short,
     holdout=False,
-    yaxes_range_acc=[0.8, 1],
-    yaxes_range_mse=[0, 30]
+    yaxes_range_acc=yaxes_range_acc,
+    yaxes_range_mse=yaxes_range_mse
 ):
 
     tab_name, children = ([], [])
@@ -43,7 +47,7 @@ def tab_plot_conditional_accuracy(
         else:
             title='Mean cross-validation conditional accuracy - ' + name 
 
-        fig1 = plot_conditional_accuracy(
+        fig1 = plot_metric_class(
             df_questions[model_type],
             df_questions_ca[model_type],
             title=title
@@ -56,7 +60,7 @@ def tab_plot_conditional_accuracy(
         else:
             title='Mean cross-validation conditional MSE - ' + name 
 
-        fig2 = plot_conditional_accuracy(
+        fig2 = plot_metric_class(
             df_questions[model_type],
             df_questions_ca[model_type],
             title=title,
@@ -80,13 +84,13 @@ def tab_plot_conditional_accuracy(
     return tab
 
 
-def tab_plot_accuracy(
+def tab_plot_metric(
     df_questions, 
     questions_info,
     model_type_name=sort_params_short,
     df_questions_holdout=None,
-    yaxes_range_acc=[0.8, 1],
-    yaxes_range_mse=[0, 30]
+    yaxes_range_acc=yaxes_range_acc,
+    yaxes_range_mse=yaxes_range_mse
 ):
 
     tab_name, children = ([], [])
@@ -105,7 +109,7 @@ def tab_plot_accuracy(
         else:
             title='Mean holdout set accuracy - ' + name
 
-        fig1 = plot_accuracy(
+        fig1 = plot_metric(
             [[df_questions[model_type], 'cv mean']],
             title=title,
             ci=True
@@ -128,7 +132,7 @@ def tab_plot_accuracy(
         else:
             title='Mean holdout set MSE - ' + name
 
-        fig2 = plot_accuracy(
+        fig2 = plot_metric(
             [[df_questions[model_type], 'cv mean']],
             title=title,
             y_m='val_mse_m',
@@ -168,7 +172,7 @@ def rgb_to_rgba(color_idx, alpha=1):
     return 'rgba('+color[4:-1]+', '+str(alpha)+')'
 
 
-def plot_accuracy(
+def plot_metric(
     df_list,
     title='Mean cross-validation accuracy',
     ci=False, 
@@ -235,7 +239,7 @@ def plot_accuracy(
     return fig
 
 
-def plot_conditional_accuracy(
+def plot_metric_class(
     df, 
     df_ca,
     title='Mean cross-validation conditional accuracy',
@@ -244,7 +248,7 @@ def plot_conditional_accuracy(
     yaxes_range=None
 ):
 
-    fig = plot_accuracy(
+    fig = plot_metric(
         [
             [df_ca[df_ca['class']==k+1], 'class '+str(k+1)]
             for k in range(5)
@@ -267,29 +271,41 @@ def plot_conditional_accuracy(
     return fig
 
 
-def plot_accuracy_mse(
+def plot_metrics(
     df_questions,
     black_trace=5,
-    yaxes_range_acc=[0.8, 1],
-    yaxes_range_mse=[0, 30]
+    yaxes_range_acc=yaxes_range_acc,
+    yaxes_range_mse=yaxes_range_mse,
+    ci=True
 ):
     data = [
         [df_questions[item], sort_params_short[item]]
         for item in sorted(df_questions)
     ]
 
-    fig1 = plot_accuracy(
+    fig1 = plot_metric(
         data,
-        title='Mean validation accuracy (cross-validation)',
-        ci=True,
+        title='val acc (cross-validation)',
+        ci=ci,
         black_trace=black_trace,
         yaxes_range=yaxes_range_acc
     )
 
-    fig2 = plot_accuracy(
+    fig2 = plot_metric(
         data,
-        title='MSE (cross-validation)',
-        ci=True,
+        title='val xent (cross-validation)',
+        ci=ci,
+        y_m='val_xent_m',
+        y_l='val_xent_l', 
+        y_u='val_xent_u',    
+        black_trace=black_trace,
+        yaxes_range=yaxes_range_xent
+    )
+
+    fig3 = plot_metric(
+        data,
+        title='val mse (cross-validation)',
+        ci=ci,
         y_m='val_mse_m',
         y_l='val_mse_l', 
         y_u='val_mse_u',    
@@ -297,4 +313,6 @@ def plot_accuracy_mse(
         yaxes_range=yaxes_range_mse
     )
 
-    return widgets.HBox([go.FigureWidget(fig1), go.FigureWidget(fig2)])
+    return widgets.HBox([
+        go.FigureWidget(fig) for fig in [fig1, fig2, fig3]
+        ])

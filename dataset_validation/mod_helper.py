@@ -32,7 +32,7 @@ def load_data(results_path, cache_pre, cache_post, metrics, run_types):
 
     cache_lookup = {
         0: '_0_',
-        1: '_0_',
+        1: '_1_',
         2: '_all_'
     }
 
@@ -44,7 +44,7 @@ def load_data(results_path, cache_pre, cache_post, metrics, run_types):
         ]
         for item in run_types
     }
-            
+    
     my_data = {}
 
     for run_type in available:
@@ -168,7 +168,7 @@ def tab_plot_accuracy_multi(
     df_multi,
     df_multi_val,
     yaxes_range_acc=[0.8, 1],
-    yaxes_range_mse=[0, 30]
+    yaxes_range_mse=[0, 10]
 ):
 
     run_ids = natsorted(df_multi.keys())
